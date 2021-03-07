@@ -28,37 +28,31 @@ local listener = nil
 -- 		and not(GLOBAL.ThePlayer.HUD:IsControllerCraftingOpen() or GLOBAL.ThePlayer.HUD:IsControllerInventoryOpen())
 -- end
 
---RPC Function
-local function FillStatus(inst)
-	inst.components.modcharacterstats:FillStatus(inst)
-end
-local function FillStatusFunction()
-	GLOBAL.SendModRPCToServer(MOD_RPC["modscreen"]["fillstatus"], GLOBAL.ThePlayer)
-end
-
-
-local function FillHealth(inst)
-	inst.components.modcharacterstats:FillHealth(inst)
-end
-local function FillHealthCB(inst)
-	GLOBAL.SendModRPCToServer(MOD_RPC["modscreen"]["health"], GLOBAL.ThePlayer)
-end
-
-local function FillHunger(inst)
-	inst.components.modcharacterstats:FillHunger(inst)
-end
-local function FillHungerCB(inst)
-	GLOBAL.SendModRPCToServer(MOD_RPC["modscreen"]["hunger"], GLOBAL.ThePlayer)
+--RPC Functions 
+--
+-- data {
+-- 	action:what to call
+-- 	value:what to set	
+-- }
+local function UpdateCharacter(rpc, inst, action, value)
+	if (action) then
+		if (action == "fillhealth") then
+			rpc.components.modcharacterstats:FillHealth(rpc)
+		elseif(action == "fillhunger") then
+			rpc.components.modcharacterstats:FillHunger(rpc)
+		elseif(action == "fillsanity") then
+			rpc.components.modcharacterstats:FillSanity(rpc)
+		elseif(action == "setrunspeed") then
+			rpc.components.modcharacterstats:SetRunSpeed(rpc, value)			
+		end
+	end
 end
 
-local function FillSanity(inst)
-	inst.components.modcharacterstats:FillSanity(inst)
-end
-local function FillSanityCB(inst)
-	GLOBAL.SendModRPCToServer(MOD_RPC["modscreen"]["sanity"], GLOBAL.ThePlayer)
+local function UpdateCharacterCallback(data, x, y)
+	GLOBAL.SendModRPCToServer(MOD_RPC["modscreen"]["modcharacterstats"], GLOBAL.ThePlayer, data.action, data.value)
 end
 
-
+--Mod screen
 local function ShowModScreen()
 	if (local_controls and local_controls.modScreen) then
 		SetModHUDFocus("ModScreen", true)
@@ -81,9 +75,9 @@ local function AddModScreen(controls)
 		local_player = GLOBAL.ThePlayer
 	end
 	if local_controls.modScreen == nil then
-		local_controls.modScreen = local_controls:AddChild(ModScreen(local_player, EditorOptions))
+		local_controls.modScreen = local_controls:AddChild(ModScreen(local_player, EditorOptions, UpdateCharacterCallback))
 		--callbacks
-		local_controls.modScreen:SetFillStatus(FillStatusFunction)
+		-- local_controls.modScreen:SetActionCallBack(UpdateCharacterCallback)
 		--init
 		local_controls.modScreen:Init()
 		--hidden by default
@@ -152,38 +146,37 @@ end
 AddPlayerPostInit(CharacterSetup)
 
 -- AddModRPCHandler("modscreen", "fillstatus", FillStatus)
-
 EditorOptions = {
 	health = {
 		desc = "Health",
 		type = "button",
 		buttonDesc = "Fill",
-		action = FillHealthCB,
-		rpcHandler = FillHealth
+		data = {
+			action = "fillhealth",
+			value = ""
+		}		
 	},
 	hunger = {
 		desc = "Hunger",
 		type = "button",
 		buttonDesc = "Fill",
-		action = FillHungerCB,
-		rpcHandler = FillHunger
+		data = {
+			action = "fillhunger",
+			value = ""
+		}		
 	},
 	sanity = {
 		desc = "Sanity",
 		type = "button",
 		buttonDesc = "Fill",
-		action = FillSanityCB,
-		rpcHandler = FillSanity
+		data = {
+			action = "fillsanity",
+			value = ""
+		}		
 	}
 }
 
-for k,v in pairs(EditorOptions) do
-	AddModRPCHandler("modscreen", k, v.rpcHandler)
-end
-
--- AddModRPCHandler("modscreen", "health", FillHealth)
--- AddModRPCHandler("modscreen", "hunger", FillHunger)
--- AddModRPCHandler("modscreen", "sanity", FillSanity)
+AddModRPCHandler("modscreen", "modcharacterstats", UpdateCharacter)
 AddClassPostConstruct( "widgets/controls", AddModScreen)
 
 

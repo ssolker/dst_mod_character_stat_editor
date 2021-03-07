@@ -3,16 +3,25 @@ local Text = require "widgets/text"
 local Image = require "widgets/image"
 local Button = require "widgets/button"
 local Menu = require "widgets/menu"
+local Grid = require "widgets/grid"
+local Spinner = require "widgets/spinner"
+local NumericSpinner = require "widgets/numericspinner"
+local spinner_width = 180
+local spinner_height = 36 --nil -- use default
+local spinner_scale_x = .76
+local spinner_scale_y = .68
+
+
 local ImageButton = require "widgets/imagebutton"
 local ScrollableList = require "widgets/scrollablelist"
 local TEMPLATES = require "widgets/templates"
 
-local ModScreen = Class(Widget, function(self, player, editoroptions)
+
+local ModScreen = Class(Widget, function(self, player, editoroptions, actionCallback)
   Widget._ctor(self, "ModScreen") -- constructor
   self.player = player
-  self.fillStatus = nil
+  self.actionCallback = actionCallback
   self.editorOptions = editoroptions
-  print(self.editorOptions)
 end)
 
 function ModScreen:SetFillStatus(fillStatusFunction)
@@ -27,7 +36,7 @@ local function CreateTextWidget(widgetTitle, text, x, y)
   return titleW
 end
 
--- option {desc, type, fn}
+-- option {desc, type, action}
 function ModScreen:CreateRowWidget(option)
   print("OPTIOUNS")
   for k,v in pairs(option) do
@@ -39,11 +48,64 @@ function ModScreen:CreateRowWidget(option)
   label:SetString(option.desc)
   local buttons = {}
 
-  table.insert(buttons, {text=option.buttonDesc, cb=option.action })
+  local callback = function() self.actionCallback(option.data) end
+  table.insert(buttons, {text=option.buttonDesc, cb=callback})
   local menu = rowWidget:AddChild(Menu(buttons, 0, false, nil, nil, 32))
   menu:SetPosition(380, 0, 0)
   return rowWidget
 end
+
+function ModScreen:CreateNumericSpinnerRow()
+  local rowWidget = Widget("RowWidgetSpinner")
+  local grid = rowWidget:AddChild(Grid())
+  grid:SetPosition(0, 0, 0)
+  grid:InitSize(2, 10, 440, -40)
+
+  local numericspinners = {}
+	local spinner = NumericSpinner( 40, 100, spinner_width, spinner_height, nil, nil, nil, nil, true, nil, nil, spinner_scale_x, spinner_scale_y )
+	spinner.OnChanged =
+		function( _, data )
+      print("SPinner on change")
+      print(data)
+      local d = {
+        action = "setrunspeed",
+        value = data
+      }
+      self.actionCallback(d)
+		end
+  table.insert( numericspinners, { "SPINNER", spinner } )
+
+	for k,v in ipairs(numericspinners) do
+		grid:AddItem(self:CreateSpinnerGroup(v[1], v[2]), 1, k)
+	end
+
+  return rowWidget
+
+end
+
+function ModScreen:CreateSpinnerGroup( text, spinner )
+	local label_width = 200
+	spinner:SetTextColour(0,0,0,1)
+	local group = Widget( "SpinnerGroup" )
+	local bg = group:AddChild(Image("images/ui.xml", "single_option_bg.tex"))
+	bg:SetSize(380, 40)
+	bg:SetPosition(50, 0, 0)
+
+	local label = group:AddChild( Text( NEWFONT, 26, text ) )
+	label:SetPosition( -label_width/2 + 55, 0, 0 )
+	label:SetRegionSize( label_width, 50 )
+	label:SetHAlign( ANCHOR_RIGHT )
+	label:SetColour(0,0,0,1)
+	
+	group:AddChild( spinner )
+	spinner:SetPosition( 148, 0, 0 )
+	spinner:SetTextSize(22)
+
+	--pass focus down to the spinner
+	group.focus_forward = spinner
+	return group
+end
+
 
 function ModScreen:PrintInfo()
   print(self)
@@ -96,6 +158,8 @@ function ModScreen:Init()
       pos = pos + 1
     end
   end
+
+  table.insert(items, 4, self:CreateNumericSpinnerRow())
 
   self.scroll_list = self.root:AddChild(ScrollableList(
     items, -- items
