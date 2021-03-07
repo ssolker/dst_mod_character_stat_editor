@@ -2,13 +2,15 @@
 -- Imports and Widgets
 ----------------------------
 
-local TestWidget = GLOBAL.require("widgets/testWidget")
 local Controls = GLOBAL.require("widgets/controls")
 local ModScreen = GLOBAL.require("screens/modscreen")
 
+
 ----------------------------
--- local variables
+-- variables
 ----------------------------
+
+local EditorOptions = nil
 local handlersApplied = false
 local eventsApplied = false
 local isOpen = false
@@ -16,8 +18,6 @@ local isPressed = false
 local local_controls = nil
 local local_player = nil
 local listener = nil
-local testClass = nil
-
 
 ----------------------------
 -- Methods
@@ -28,25 +28,41 @@ local testClass = nil
 -- 		and not(GLOBAL.ThePlayer.HUD:IsControllerCraftingOpen() or GLOBAL.ThePlayer.HUD:IsControllerInventoryOpen())
 -- end
 
---Testing RPC
-local function TestingRPC(inst)
-	inst.components.testclass:PrintStatus(inst)
-end
-
---Testing RPC
+--RPC Function
 local function FillStatus(inst)
-	inst.components.testclass:FillStatus(inst)
+	inst.components.modcharacterstats:FillStatus(inst)
 end
-
 local function FillStatusFunction()
 	GLOBAL.SendModRPCToServer(MOD_RPC["modscreen"]["fillstatus"], GLOBAL.ThePlayer)
 end
+
+
+local function FillHealth(inst)
+	inst.components.modcharacterstats:FillHealth(inst)
+end
+local function FillHealthCB(inst)
+	GLOBAL.SendModRPCToServer(MOD_RPC["modscreen"]["health"], GLOBAL.ThePlayer)
+end
+
+local function FillHunger(inst)
+	inst.components.modcharacterstats:FillHunger(inst)
+end
+local function FillHungerCB(inst)
+	GLOBAL.SendModRPCToServer(MOD_RPC["modscreen"]["hunger"], GLOBAL.ThePlayer)
+end
+
+local function FillSanity(inst)
+	inst.components.modcharacterstats:FillSanity(inst)
+end
+local function FillSanityCB(inst)
+	GLOBAL.SendModRPCToServer(MOD_RPC["modscreen"]["sanity"], GLOBAL.ThePlayer)
+end
+
 
 local function ShowModScreen()
 	if (local_controls and local_controls.modScreen) then
 		SetModHUDFocus("ModScreen", true)
 		local_controls.modScreen:Show()
-		GLOBAL.SendModRPCToServer(MOD_RPC["modscreen"]["testingrpc"], GLOBAL.ThePlayer)
 	end
 end
 
@@ -57,36 +73,38 @@ local function HideModScreen()
 	end
 end
 
+
 local function AddModScreen(controls)
-	print("AddModScreen\n")
+	-- print("AddModScreen\n")
 	local_controls = controls
 	if (not local_player) then
 		local_player = GLOBAL.ThePlayer
 	end
 	if local_controls.modScreen == nil then
-		local_controls.modScreen = local_controls:AddChild(ModScreen(local_player))
+		local_controls.modScreen = local_controls:AddChild(ModScreen(local_player, EditorOptions))
+		--callbacks
 		local_controls.modScreen:SetFillStatus(FillStatusFunction)
+		--init
 		local_controls.modScreen:Init()
+		--hidden by default
 		HideModScreen()
 	end
 end
 
+--Player loaded
+--Local and Client inst.
+--User Server inst for character class init.
 local function CharacterSetup(inst)
-	local old_onload = inst.OnLoad
-	if GLOBAL.TheWorld.ismastersim then
-		--Server
-		inst:AddComponent("testclass")
-
+	local old_onload = inst.OnLoad	
+	if GLOBAL.TheWorld.ismastersim then --Server
+		inst:AddComponent("modcharacterstats") --from components folder
 		inst.OnLoad = function(inst, data)
 			old_onload(inst, data)
-			print("CHANGING")
-			inst.components.testclass:Loaded()
+			-- inst.components.modcharacterstats:Loaded()
 		end
-		inst.components.testclass:GetComponents()
-		local_player = inst
-	else
-		--Client
-		print(inst.replica.testclass)
+		local_player = inst	
+	-- else --Client
+	-- 	print(inst.replica.modcharacterstats)
 	end
 end
 
@@ -132,9 +150,42 @@ end
 ----------------------------
 
 AddPlayerPostInit(CharacterSetup)
-AddClassPostConstruct( "widgets/controls", AddModScreen )
-AddModRPCHandler("modscreen", "testingrpc", TestingRPC)
-AddModRPCHandler("modscreen", "fillstatus", FillStatus)
+
+-- AddModRPCHandler("modscreen", "fillstatus", FillStatus)
+
+EditorOptions = {
+	health = {
+		desc = "Health",
+		type = "button",
+		buttonDesc = "Fill",
+		action = FillHealthCB,
+		rpcHandler = FillHealth
+	},
+	hunger = {
+		desc = "Hunger",
+		type = "button",
+		buttonDesc = "Fill",
+		action = FillHungerCB,
+		rpcHandler = FillHunger
+	},
+	sanity = {
+		desc = "Sanity",
+		type = "button",
+		buttonDesc = "Fill",
+		action = FillSanityCB,
+		rpcHandler = FillSanity
+	}
+}
+
+for k,v in pairs(EditorOptions) do
+	AddModRPCHandler("modscreen", k, v.rpcHandler)
+end
+
+-- AddModRPCHandler("modscreen", "health", FillHealth)
+-- AddModRPCHandler("modscreen", "hunger", FillHunger)
+-- AddModRPCHandler("modscreen", "sanity", FillSanity)
+AddClassPostConstruct( "widgets/controls", AddModScreen)
+
 
 
 ----------------------------

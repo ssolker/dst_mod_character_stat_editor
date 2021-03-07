@@ -1,6 +1,6 @@
-name = "1_Shuaib Mod"
-description = "Hello World"
-author = "Shuaib"
+name = "Character Stat Editor"
+description = "Edit Character Stats"
+author = "Shu"
 version = "0.0.1"
 
 forumthread = ""
@@ -16,12 +16,13 @@ dst_compatible = true
 all_clients_require_mod = false
 client_only_mod = false
 
-server_filter_tags = {"testing"}
+server_filter_tags = {"health","sanity","hunger","editor","player"}
 
 priority = 0
 
 icon_atlas = "modicon.xml"
 icon = "modicon.tex"
+
 -- -------------------
 -- Resources
 -- -------------------
@@ -50,5 +51,5 @@ configuration_options =
 		hover = "Testing Key.",
 		options = keyslist,
 		default = "P",
-	},  
+	},	
 }
